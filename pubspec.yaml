@@ -14,4 +14,5 @@ dev_dependencies:
   lints: ^1.0.0
 dependencies: 
   dio: ^4.0.6
+  gradle_properties: ^1.0.0
   html: ^0.15.1
