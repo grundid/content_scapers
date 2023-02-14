@@ -97,14 +97,15 @@ void run(String configFile, Dio dio) async {
         break;
       }
     }
+    if (DateTime.now().weekday == DateTime.saturday) {
+      Map<String, dynamic> confirmNotification = {
+        "subject": "$sucessfull von ${contentItems.length} Seiten gescraped.",
+        "message":
+            "Aktuelle Nachrichten:\n\n${contentItems.map((e) => e["title"]).join("\n")}"
+      };
 
-    Map<String, dynamic> confirmNotification = {
-      "subject": "$sucessfull von ${contentItems.length} Seiten gescraped.",
-      "message":
-          "Aktuelle Nachrichten:\n\n${contentItems.map((e) => e["title"]).join("\n")}"
-    };
-
-    await dio.post(properties["notificationUrl"]!, data: confirmNotification);
+      await dio.post(properties["notificationUrl"]!, data: confirmNotification);
+    }
   }
 }
 
