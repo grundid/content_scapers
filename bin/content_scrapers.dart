@@ -55,53 +55,64 @@ void run(String configFile, Dio dio) async {
     }
     List<Map<String, dynamic>> contentItems = [];
 
-    for (Document document in documents) {
-      for (Element element in document.getElementsByClassName("record")) {
-        Element title = element.getElementsByTagName("h3").first;
-        Element description =
-            element.getElementsByClassName("description").first;
-        Element link = element.getElementsByClassName("button_continue").first;
-        Element img = element.getElementsByClassName("teaserimage").first;
-        Element pubDate = element.getElementsByClassName("creation").first;
+    try {
+      for (Document document in documents) {
+        for (Element element in document.getElementsByClassName("record")) {
+          Element title = element.getElementsByTagName("h3").first;
+          Element description =
+              element.getElementsByClassName("description").first;
+          Element link =
+              element.getElementsByClassName("button_continue").first;
+          Element img = element.getElementsByClassName("teaserimage").first;
+          Element pubDate = element.getElementsByClassName("creation").first;
 
-        DateTime pubDateTime = DateTime.now();
-        RegExpMatch? regExpMatch = regExp.firstMatch(pubDate.text);
-        if (regExpMatch != null && regExpMatch.groupCount >= 3) {
-          pubDateTime = DateTime(
-              int.parse(regExpMatch.group(3)!),
-              int.parse(regExpMatch.group(2)!),
-              int.parse(regExpMatch.group(1)!));
+          DateTime pubDateTime = DateTime.now();
+          RegExpMatch? regExpMatch = regExp.firstMatch(pubDate.text);
+          if (regExpMatch != null && regExpMatch.groupCount >= 3) {
+            pubDateTime = DateTime(
+                int.parse(regExpMatch.group(3)!),
+                int.parse(regExpMatch.group(2)!),
+                int.parse(regExpMatch.group(1)!));
+          }
+
+          Map<String, dynamic> data = {
+            "title": title.text.trim(),
+            "link": "https://www.gundelsheim.de/${link.attributes["href"]}",
+            "pubDate": pubDateTime.toIso8601String(),
+            "author": "Gundelsheim",
+            "content": description.text.trim(),
+            "channelId": channelId
+          };
+          contentItems.add(data);
         }
+      }
 
-        Map<String, dynamic> data = {
-          "title": title.text.trim(),
-          "link": "https://www.gundelsheim.de/${link.attributes["href"]}",
-          "pubDate": pubDateTime.toIso8601String(),
-          "author": "Gundelsheim",
-          "content": description.text.trim(),
-          "channelId": channelId
+      int sucessfull = 0;
+      for (Map<String, dynamic> data in contentItems) {
+        try {
+          Response response =
+              await dio.put(properties["storageUrl"]!, data: data);
+          if (response.statusCode == 200) {
+            sucessfull++;
+          }
+        } on DioError catch (_) {
+          break;
+        }
+      }
+      if (DateTime.now().weekday == DateTime.saturday) {
+        Map<String, dynamic> confirmNotification = {
+          "subject": "$sucessfull von ${contentItems.length} Seiten gescraped.",
+          "message":
+              "Aktuelle Nachrichten:\n\n${contentItems.map((e) => e["title"]).join("\n")}"
         };
-        contentItems.add(data);
-      }
-    }
 
-    int sucessfull = 0;
-    for (Map<String, dynamic> data in contentItems) {
-      try {
-        Response response =
-            await dio.put(properties["storageUrl"]!, data: data);
-        if (response.statusCode == 200) {
-          sucessfull++;
-        }
-      } on DioError catch (_) {
-        break;
+        await dio.post(properties["notificationUrl"]!,
+            data: confirmNotification);
       }
-    }
-    if (DateTime.now().weekday == DateTime.saturday) {
+    } catch (e) {
       Map<String, dynamic> confirmNotification = {
-        "subject": "$sucessfull von ${contentItems.length} Seiten gescraped.",
-        "message":
-            "Aktuelle Nachrichten:\n\n${contentItems.map((e) => e["title"]).join("\n")}"
+        "subject": "Fehler beim Scraper.",
+        "message": "Fehler: " + e.toString()
       };
 
       await dio.post(properties["notificationUrl"]!, data: confirmNotification);
