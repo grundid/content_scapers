@@ -58,12 +58,16 @@ void run(String configFile, Dio dio) async {
     try {
       for (Document document in documents) {
         for (Element element in document.getElementsByClassName("record")) {
-          Element title = element.getElementsByTagName("h3").first;
-          Element description =
-              element.getElementsByClassName("description").first;
+          String title = element.getElementsByTagName("h3").isEmpty
+              ? "Ohne Überschrift"
+              : element.getElementsByTagName("h3").first.text;
+          String description =
+              element.getElementsByClassName("description").isEmpty
+                  ? "keine Beschreibung"
+                  : element.getElementsByClassName("description").first.text;
           Element link =
               element.getElementsByClassName("button_continue").first;
-          Element img = element.getElementsByClassName("teaserimage").first;
+          //Element img = element.getElementsByClassName("teaserimage").first;
           Element pubDate = element.getElementsByClassName("creation").first;
 
           DateTime pubDateTime = DateTime.now();
@@ -76,11 +80,11 @@ void run(String configFile, Dio dio) async {
           }
 
           Map<String, dynamic> data = {
-            "title": title.text.trim(),
+            "title": title.trim(),
             "link": "https://www.gundelsheim.de/${link.attributes["href"]}",
             "pubDate": pubDateTime.toIso8601String(),
             "author": "Gundelsheim",
-            "content": description.text.trim(),
+            "content": description.trim(),
             "channelId": channelId
           };
           contentItems.add(data);
@@ -109,10 +113,12 @@ void run(String configFile, Dio dio) async {
         await dio.post(properties["notificationUrl"]!,
             data: confirmNotification);
       }
-    } catch (e) {
+    } catch (e, s) {
+      print(e);
+      print(s);
       Map<String, dynamic> confirmNotification = {
         "subject": "Fehler beim Scraper.",
-        "message": "Fehler: " + e.toString()
+        "message": "Fehler: " + e.toString() + "\n" + s.toString()
       };
 
       await dio.post(properties["notificationUrl"]!, data: confirmNotification);
