@@ -10,14 +10,9 @@ List<String> getPages(Document document) {
   List<Element> liItems =
       document.getElementsByClassName("pagination").first.children;
   for (Element li in liItems) {
-    if (!li.classes.contains("next") &&
-        !li.classes.contains("last") &&
-        !li.classes.contains("current")) {
-      List<Element> aElement = li.getElementsByTagName("a");
-      if (aElement.isNotEmpty) {
-        String link = aElement.first.attributes["href"]!;
-        result.add(link);
-      }
+    if (li.localName == "a") {
+      String link = li.attributes["href"]!;
+      result.add(link);
     }
   }
   return result;
@@ -46,6 +41,7 @@ void run(String configFile, Dio dio) async {
         Document document = parse(response.data);
         documents.add(document);
         List<String> pages = getPages(document);
+        print("found " + pages.length.toString() + " additional pages");
         for (String pageUrl in pages) {
           print("loading " + baseUrl + pageUrl);
           Response pageResponse = await dio.get(baseUrl + pageUrl);
@@ -54,21 +50,29 @@ void run(String configFile, Dio dio) async {
           }
         }
       }
+
+      print("found ${documents.length} pages to scrape");
+
       List<Map<String, dynamic>> contentItems = [];
 
       for (Document document in documents) {
-        for (Element element in document.getElementsByClassName("record")) {
+        for (Element element
+            in document.getElementsByClassName("hw_record__content")) {
           String title = element.getElementsByTagName("h3").isEmpty
               ? "Ohne Überschrift"
               : element.getElementsByTagName("h3").first.text;
           String description =
-              element.getElementsByClassName("description").isEmpty
+              element.getElementsByClassName("hw_record__teasertext").isEmpty
                   ? "keine Beschreibung"
-                  : element.getElementsByClassName("description").first.text;
+                  : element
+                      .getElementsByClassName("hw_record__teasertext")
+                      .first
+                      .text;
           Element link =
-              element.getElementsByClassName("button_continue").first;
+              element.getElementsByClassName("hw_record__more__show").first;
           //Element img = element.getElementsByClassName("teaserimage").first;
-          Element pubDate = element.getElementsByClassName("creation").first;
+          Element pubDate =
+              element.getElementsByClassName("hw_record__value__text").first;
 
           DateTime pubDateTime = DateTime.now();
           RegExpMatch? regExpMatch = regExp.firstMatch(pubDate.text);
@@ -87,6 +91,7 @@ void run(String configFile, Dio dio) async {
             "content": description.trim(),
             "channelId": channelId
           };
+          //print(data);
           contentItems.add(data);
         }
       }
