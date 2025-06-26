@@ -8,7 +8,7 @@ import 'package:html/parser.dart';
 List<String> getPages(Document document) {
   List<String> result = [];
   List<Element> liItems =
-      document.getElementsByClassName("pager").first.children;
+      document.getElementsByClassName("pagination").first.children;
   for (Element li in liItems) {
     if (!li.classes.contains("next") &&
         !li.classes.contains("last") &&
@@ -29,33 +29,33 @@ void run(String configFile, Dio dio) async {
   if (properties == null) {
     print("Missing config.properties");
   } else {
-    String baseUrl = properties["baseUrl"]!;
-    String firstPage = properties["firstPage"]!;
-    String channelId = properties["channelId"]!;
+    try {
+      String baseUrl = properties["baseUrl"]!;
+      String firstPage = properties["firstPage"]!;
+      String channelId = properties["channelId"]!;
 
-    RegExp regExp = RegExp("(\\d\\d)\\.(\\d\\d)\\.(\\d\\d\\d\\d)");
+      RegExp regExp = RegExp("(\\d\\d)\\.(\\d\\d)\\.(\\d\\d\\d\\d)");
 
-    List<Document> documents = [
-      //parse(File("data/aktuelle-meldungen.html").readAsStringSync())
-    ];
+      List<Document> documents = [
+        //parse(File("data/aktuelle-meldungen.html").readAsStringSync())
+      ];
 
-    print("loading first page");
-    Response response = await dio.get(baseUrl + firstPage);
-    if (response.statusCode == 200) {
-      Document document = parse(response.data);
-      documents.add(document);
-      List<String> pages = getPages(document);
-      for (String pageUrl in pages) {
-        print("loading " + baseUrl + pageUrl);
-        Response pageResponse = await dio.get(baseUrl + pageUrl);
-        if (pageResponse.statusCode == 200) {
-          documents.add(parse(pageResponse.data));
+      print("loading first page");
+      Response response = await dio.get(baseUrl + firstPage);
+      if (response.statusCode == 200) {
+        Document document = parse(response.data);
+        documents.add(document);
+        List<String> pages = getPages(document);
+        for (String pageUrl in pages) {
+          print("loading " + baseUrl + pageUrl);
+          Response pageResponse = await dio.get(baseUrl + pageUrl);
+          if (pageResponse.statusCode == 200) {
+            documents.add(parse(pageResponse.data));
+          }
         }
       }
-    }
-    List<Map<String, dynamic>> contentItems = [];
+      List<Map<String, dynamic>> contentItems = [];
 
-    try {
       for (Document document in documents) {
         for (Element element in document.getElementsByClassName("record")) {
           String title = element.getElementsByTagName("h3").isEmpty
@@ -92,14 +92,18 @@ void run(String configFile, Dio dio) async {
       }
 
       int sucessfull = 0;
+      // TODO log errors while uploading data
       for (Map<String, dynamic> data in contentItems) {
         try {
           Response response =
               await dio.put(properties["storageUrl"]!, data: data);
           if (response.statusCode == 200) {
             sucessfull++;
+          } else {
+            print("Error: " + response.toString());
           }
-        } on DioError catch (_) {
+        } on DioError catch (e) {
+          print("Error: " + e.toString());
           break;
         }
       }
